@@ -1,0 +1,21 @@
+
+
+1. Users 
+    . POST /api/auth/register
+    . POST /api/auth/login
+
+2. posts 
+    . create post route : POST /api/posts
+    . get all posts route : GET /api/posts
+    . get single post route : GET /api/posts/:id
+    . update post route : PUT /api/posts/:id
+    . delete post route : DELETE /api/posts/:id
+    . publish/unpublish route : PATCH /api/posts/:id
+
+3. comments 
+
+    . add comment : POST /api/posts/:postId/comments
+    . get comments for post : GET /api/posts/:postId/comments
+    . delete comment : DELETE /api/comments/:id
+
+
