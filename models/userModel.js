@@ -14,7 +14,16 @@ async function findUser(email) {
   return res.rows[0];
 }
 
+async function findUserById(id) {
+  const { rows } = await pool.query(
+    `SELECT id,username,email FROM users WHERE id = $1`,
+    [id],
+  );
+  return rows[0];
+}
+
 module.exports = {
   saveUser,
   findUser,
+  findUserById,
 };

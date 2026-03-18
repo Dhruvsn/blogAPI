@@ -4,6 +4,10 @@ const {
   getPostById,
   updatePostById,
   deletePostById,
+  getTotalPostsCount,
+  likePost,
+  unlikePost,
+  getLikesCount,
 } = require("../models/postModel");
 
 // create post flow
@@ -36,18 +40,29 @@ async function createPost(req, res) {
   }
 }
 
-// get all published posts 
+// get all published posts
 async function getPosts(req, res) {
-  const page = parseInt(req.query.page) || 1;
-  const limit = parseInt(req.query.limit) || 10;
+  const page = Math.max(1, parseInt(req.query.page) || 1);
+  const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 10));
 
   const offset = (page - 1) * limit;
   try {
-    const posts = await getPublishedPosts(limit, offset);
+    /*
+    const { author_id, search } = req.query;
+    const posts = await getPublishedPosts(limit, offset, {
+  author_id,
+  search,
+});
+  */
 
+    const posts = await getPublishedPosts(limit, offset);
+    const total = await getTotalPostsCount();
     res.status(200).json({
       message: "post fetched successfully!",
       posts,
+      page,
+      totalPages: Math.ceil(total / limit), // total pages math.ceil will round up to the nearest integer and
+      //  total/limit will give us the total number of pages
     });
   } catch (error) {
     console.error("error: ", error.message);
@@ -172,23 +187,89 @@ async function deletePost(req, res) {
     }
 
     // authenticate user
-    if (post.author_id !== user.id && req.user.role !== "admin") {
+    if (post.author_id !== req.user.id && req.user.role !== "admin") {
       return res.status(403).json({
         message: "you are not allowed to delete the post",
       });
     }
 
-    const deletePost = await deletePostById(id);
+    const deletedPost = await deletePostById(id);
 
     res.status(200).json({
       success: true,
       message: "post delete successfully",
-      data: deletePost,
+      data: deletedPost,
     });
   } catch (err) {
     console.log("Error", err.message);
     return res.status(500).json({
       message: "Internal server error!",
+    });
+  }
+}
+
+async function likePostController(req, res) {
+  const post_id = parseInt(req.params.id);
+  const user_id = req.user.id;
+
+  if (isNaN(post_id)) {
+    return res.status(400).json({
+      message: "Invalid post id",
+    });
+  }
+
+  try {
+    await likePost(post_id, user_id);
+
+    res.status(200).json({
+      message: "Post liked successfully!",
+    });
+  } catch (err) {
+    console.error("error: ", err.message);
+    return res.status(500).json({
+      message: "Internal server error!",
+    });
+  }
+}
+
+async function unlikePostController(req, res) {
+  const post_id = parseInt(req.params.id);
+  const user_id = req.user.id;
+
+  if (isNaN(post_id)) {
+    return res.status(400).json({
+      message: "Invalid post id",
+    });
+  }
+
+  try {
+    await unlikePost(post_id, user_id);
+
+    res.status(200).json({
+      message: "Post unliked successfully!",
+    });
+  } catch (err) {
+    console.error("error: ", err.message);
+    return res.status(500).json({
+      message: "Internal server error!",
+    });
+  }
+}
+
+
+// get likes of a post 
+async function getLikes(req, res) {
+  const postId = parseInt(req.params.id);
+
+  try {
+    const count = await getLikesCount(postId);
+
+    res.status(200).json({
+      likes: count,
+    });
+  } catch (err) {
+    res.status(500).json({
+      message: "Internal server error",
     });
   }
 }
@@ -199,4 +280,6 @@ module.exports = {
   getSinglePost,
   updatePost,
   deletePost,
+  likePostController,
+  unlikePostController,
 };

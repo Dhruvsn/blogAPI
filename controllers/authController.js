@@ -1,7 +1,12 @@
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const { saveUser, findUser } = require("../models/userModel.js");
+const { saveUser, findUser, findUserById } = require("../models/userModel.js");
 const { validateEmail } = require("../utils/validateors.js");
+const { saveRefreshToken } = require("../models/tokenModel.js");
+const {
+  generateToken,
+  generateRefreshToken,
+} = require("../utils/generateToken.js");
 
 // Register controller flow
 
@@ -44,7 +49,10 @@ const registerUser = async (req, res) => {
       return res.status(409).json({ message: "Email already exists!" });
     }
 
-    const hashedPassword = await bcrypt.hash(password, parseInt(process.env.SALT_ROUNDS) || 10);
+    const hashedPassword = await bcrypt.hash(
+      password,
+      parseInt(process.env.SALT_ROUNDS) || 10,
+    );
     const newUser = await saveUser(username, email, hashedPassword);
 
     res.status(201).json({
@@ -99,16 +107,15 @@ const loginUser = async (req, res) => {
     }
 
     // generate jwt token
-    const payload = {
-      id: user.id,
-      role: user.role,
-    };
-    const token = jwt.sign(payload, process.env.JWT_SECRET, {
-      expiresIn: "1h",
-    });
-    res.status(200).json({
+    const token = generateToken(user);
+    const refreshToken = generateRefreshToken(user);
+
+    await saveRefreshToken(refreshToken, user);
+
+    await res.status(200).json({
       message: "Login successful!",
       token,
+      refreshToken,
       user: {
         id: user.id,
         username: user.username,
@@ -123,7 +130,63 @@ const loginUser = async (req, res) => {
   }
 };
 
+const refreshToken = async (req, res) => {
+  const { refreshToken } = req.body;
+
+  if (!refreshToken) {
+    return res.status(400).json({
+      message: "Refresh token is required!",
+    });
+  }
+
+  try {
+    const decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN);
+    const user = findUserById(decoded.id);
+
+    if (!user || user.refreshToken !== refreshToken) {
+      return res.status(403).json({
+        message: "Invalid refresh token!",
+      });
+    }
+
+    const newToken = generateToken(user);
+
+    res.status(200).json({
+      token: newToken,
+    });
+  } catch (err) {
+    console.error("Refresh token error:", err);
+    res.status(403).json({
+      message: "Invalid refresh token!",
+    });
+  }
+};
+
+const logoutUser = async (req, res) => {
+  const userId = parseInt(req.user.id);
+  if (isNaN(userId)) {
+    return res.status(400).json({
+      message: "Invalid user id!",
+    });
+  }
+
+  try {
+    const id = userId;
+    await saveRefreshToken(null, id);
+    res.status(200).json({
+      message: "Logout successful!",
+    });
+  } catch (err) {
+    console.error("Logout error:", err);
+    res.status(500).json({
+      message: "Server error.",
+    });
+  }
+};
+
 module.exports = {
   registerUser,
   loginUser,
+  refreshToken,
+  logoutUser,
 };

@@ -1,6 +1,7 @@
 const { rateLimit } = require("express-rate-limit");
+const slowDown = require("express-slow-down");
 
-const loginLimiter = rateLimit({
+const rateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 5, // limit each IP to 5 requests per windowMs
   message: {
@@ -9,4 +10,10 @@ const loginLimiter = rateLimit({
   },
 });
 
-module.exports = loginLimiter;
+const speedLimiter = slowDown({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  delayAfter: 5, // allow 5 requests per 15 minutes, then...
+  delayMs: 500, // begin adding 500ms of delay per request above 5:
+});
+
+module.exports = { rateLimiter, speedLimiter };

@@ -1,7 +1,13 @@
 const express = require("express");
 const app = express();
+const {
+  rateLimiter,
+  speedLimiter,
+} = require("./middleware/rateLimitMiddleware.js");
 
 require("dotenv").config();
+app.use(rateLimiter);
+app.use(speedLimiter);
 // routes
 const authRoutes = require("./routes/authRoutes");
 const postRoutes = require("./routes/postRoutes");
