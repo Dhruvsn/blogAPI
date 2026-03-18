@@ -26,7 +26,51 @@ async function getPublishedPosts(limit, offset) {
   return rows;
 }
 
+async function getPostById(id) {
+  const { rows } = await pool.query(
+    `
+    Select id,title,content,published,author_id,created_at
+    FROM posts WHERE id = $1 AND published = true`,
+    [id],
+  );
+  return rows[0];
+}
+
+async function updatePostById(id, data) {
+  const { title, content, published } = data;
+
+  const { rows } = await pool.query(
+    `
+    UPDATE posts
+    SET 
+      title = COALESCE($2, title),
+      content = COALESCE($3, content),
+      published = COALESCE($4, published)
+    WHERE id = $1
+    RETURNING id, title, content, published, author_id, created_at
+    `,
+    [id, title, content, published],
+  );
+
+  return rows[0];
+}
+
+async function deletePostById(id) {
+  const { rows } = await pool.query(
+    `
+    DELETE FROM posts WHERE id = $1 
+    RETURNING id,title,content,author_id
+    `,
+    [id],
+  );
+
+  return rows[0];
+}
+
 module.exports = {
   savePost,
   getPublishedPosts,
+  getPostById,
+  updatePostById,
+  deletePostById,
 };
