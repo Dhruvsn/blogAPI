@@ -1,6 +1,6 @@
 const pool = require("../db/pool");
 
-async function getAllCommentsBYPost(postId) {
+async function getAllCommentsByPost(postId) {
   const { rows } = await pool.query(
     `
         SELECT c.*,u.username FROM comments c 
@@ -15,5 +15,5 @@ async function getAllCommentsBYPost(postId) {
 }
 
 module.exports = {
-  getAllCommentsBYPost,
+  getAllCommentsByPost,
 };

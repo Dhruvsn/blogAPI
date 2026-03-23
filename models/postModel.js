@@ -84,8 +84,8 @@ async function getTotalPostsCount(filter) {
 async function getPostById(id) {
   const { rows } = await pool.query(
     `
-    Select id,title,content,published,author_id,created_at
-    FROM posts WHERE id = $1 AND published = true`,
+    SELECT id,title,content,published,author_id,created_at
+    FROM posts WHERE id = $1`,
     [id],
   );
   return rows[0];

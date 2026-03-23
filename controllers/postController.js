@@ -135,13 +135,13 @@ async function getSinglePost(req, res) {
           message: "This post is not published",
         });
       }
-    }
 
-    // logged in but NOT author or admin -> deny
-    if (req.user.id !== post.author_id && req.user.role !== "admin") {
-      return res.status(403).json({
-        message: "you are not allowed to view this post",
-      });
+      // logged in but NOT author or admin -> deny
+      if (req.user.id !== post.author_id && req.user.role !== "admin") {
+        return res.status(403).json({
+          message: "you are not allowed to view this post",
+        });
+      }
     }
 
     // store the cache

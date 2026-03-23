@@ -112,7 +112,7 @@ const loginUser = async (req, res) => {
 
     await saveRefreshToken(refreshToken, user);
 
-    await res.status(200).json({
+    res.status(200).json({
       message: "Login successful!",
       token,
       refreshToken,

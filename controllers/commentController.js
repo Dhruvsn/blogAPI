@@ -1,4 +1,4 @@
-const { getAllCommentsBYPost } = require("../models/commentModel");
+const { getAllCommentsByPost } = require("../models/commentModel");
 const redisClient = require("../config/redis");
 const { cache } = require("react");
 
