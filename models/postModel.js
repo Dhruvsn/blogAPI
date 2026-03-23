@@ -14,7 +14,7 @@ async function savePost(title, content, published, author_id) {
 }
 
 async function getPublishedPosts(limit, offset, filter) {
-  const query = `
+  let query = `
     SELECT id,title,content,published,author_id,created_at
     FROM posts 
     WHERE published = true
@@ -29,7 +29,7 @@ async function getPublishedPosts(limit, offset, filter) {
   }
 
   let values = [];
-  index = 1;
+  let index = 1;
 
   // author filter
   if (filter.author_id) {
@@ -57,6 +57,11 @@ async function getTotalPostsCount(filter) {
     SELECT COUNT(*) FROM posts WHERE published = true
   `;
 
+  if (!filter) {
+    const { rows } = await pool.query(query);
+    return parseInt(rows[0].count);
+  }
+  
   let values = [];
   let index = 1;
 

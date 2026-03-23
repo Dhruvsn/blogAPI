@@ -11,6 +11,7 @@ app.use(speedLimiter);
 // routes
 const authRoutes = require("./routes/authRoutes");
 const postRoutes = require("./routes/postRoutes");
+const commentRoutes = require("./routes/commentRoutes.js");
 
 // middleware
 app.use(express.json());
@@ -23,5 +24,6 @@ app.get("/", (req, res) => {
 // register routes
 app.use("/api/auth", authRoutes);
 app.use("/api", postRoutes);
+app.use("/api", commentRoutes);
 
 module.exports = app;

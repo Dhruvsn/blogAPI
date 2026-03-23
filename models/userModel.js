@@ -16,7 +16,7 @@ async function findUser(email) {
 
 async function findUserById(id) {
   const { rows } = await pool.query(
-    `SELECT id,username,email FROM users WHERE id = $1`,
+    `SELECT id,username,email,refresh_token FROM users WHERE id = $1`,
     [id],
   );
   return rows[0];

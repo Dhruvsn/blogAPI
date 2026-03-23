@@ -10,6 +10,18 @@ const {
   getLikesCount,
 } = require("../models/postModel");
 
+const redisClient = require("../config/redis");
+
+async function clearPostListCache() {
+  try {
+    const keys = await redisClient.keys("posts:*");
+    if (keys && keys.length > 0) {
+      await redisClient.del(keys);
+    }
+  } catch (err) {
+    console.error("Cache clear error: ", err);
+  }
+}
 // create post flow
 
 async function createPost(req, res) {
@@ -27,6 +39,8 @@ async function createPost(req, res) {
     if (!post) {
       throw new Error("Error while saving post in the db");
     }
+
+    await clearPostListCache();
 
     res.status(201).json({
       message: "post created successfully!",
@@ -46,24 +60,42 @@ async function getPosts(req, res) {
   const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 10));
 
   const offset = (page - 1) * limit;
+  const { author_id, search } = req.query;
+  // uniqe cache key
+  const cacheKey = `posts:${page}:${limit}:${author_id || "all"}:${search || "none"}`;
   try {
-    /*
-    const { author_id, search } = req.query;
-    const posts = await getPublishedPosts(limit, offset, {
-  author_id,
-  search,
-});
-  */
+    // check data in chache
+    const cachedData = await redisClient.get(cacheKey);
 
-    const posts = await getPublishedPosts(limit, offset);
-    const total = await getTotalPostsCount();
-    res.status(200).json({
-      message: "post fetched successfully!",
-      posts,
-      page,
-      totalPages: Math.ceil(total / limit), // total pages math.ceil will round up to the nearest integer and
-      //  total/limit will give us the total number of pages
+    if (cachedData) {
+      // console.log("data from cache");
+      return res.status(200).json(JSON.parse(cachedData));
+    }
+
+    // not in cach -> fetch from db.
+
+    const posts = await getPublishedPosts(limit, offset, {
+      author_id,
+      search,
     });
+
+    const total = await getTotalPostsCount({
+      author_id,
+      search,
+    });
+
+    const response = {
+      success: true,
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+      data: posts,
+    };
+
+    // save data in cache
+    await redisClient.setEx(cacheKey, 3600, JSON.stringify(response));
+    return res.status(200).json(response);
   } catch (error) {
     console.error("error: ", error.message);
     return res.status(500).json({
@@ -80,7 +112,16 @@ async function getSinglePost(req, res) {
       message: "Invalid post Id",
     });
   }
+
+  const cacheKey = `post:${postId}`;
+
   try {
+    const cachedPost = await redisClient.get(cacheKey);
+
+    if (cachedPost) {
+      return res.status(200).json(JSON.parse(cachedPost));
+    }
+
     const post = await getPostById(postId);
     if (!post) {
       return res.status(404).json({
@@ -103,15 +144,17 @@ async function getSinglePost(req, res) {
       });
     }
 
+    // store the cache
+    await redisClient.setEx(cacheKey, 3600, JSON.stringify(post));
+
     res.status(200).json({
       message: "Post fetched successfully!",
       post,
     });
   } catch (error) {
     console.error("error: ", error.message);
-    res.status(200).json({
-      success: true,
-      data: post,
+    return res.status(500).json({
+      message: "Internal server error!",
     });
   }
 }
@@ -155,6 +198,9 @@ async function updatePost(req, res) {
       published,
     });
 
+    await clearPostListCache();
+    await redisClient.del(`post:${id}`);
+
     res.status(200).json({
       success: true,
       data: updatedPost,
@@ -195,6 +241,10 @@ async function deletePost(req, res) {
 
     const deletedPost = await deletePostById(id);
 
+    await clearPostListCache();
+    await redisClient.del(`post:${id}`);
+    await redisClient.del(`likes:${id}`);
+
     res.status(200).json({
       success: true,
       message: "post delete successfully",
@@ -221,6 +271,8 @@ async function likePostController(req, res) {
   try {
     await likePost(post_id, user_id);
 
+    await redisClient.del(`likes:${post_id}`);
+
     res.status(200).json({
       message: "Post liked successfully!",
     });
@@ -245,6 +297,8 @@ async function unlikePostController(req, res) {
   try {
     await unlikePost(post_id, user_id);
 
+    await redisClient.del(`likes:${post_id}`);
+
     res.status(200).json({
       message: "Post unliked successfully!",
     });
@@ -256,13 +310,21 @@ async function unlikePostController(req, res) {
   }
 }
 
-
-// get likes of a post 
+// get likes of a post
 async function getLikes(req, res) {
   const postId = parseInt(req.params.id);
+  const cacheKey = `likes:${postId}`;
 
   try {
+    const cachedLikes = await redisClient.get(cacheKey);
+
+    if (cachedLikes) {
+      return res.status(200).json({ likes: parseInt(cachedLikes) });
+    }
+
     const count = await getLikesCount(postId);
+
+    await redisClient.setEx(cacheKey, 3600, count.toString());
 
     res.status(200).json({
       likes: count,
@@ -282,4 +344,5 @@ module.exports = {
   deletePost,
   likePostController,
   unlikePostController,
+  getLikes
 };

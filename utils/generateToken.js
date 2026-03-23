@@ -1,6 +1,6 @@
 const jwt = require("jsonwebtoken");
 
-async function generateToken(user) {
+function generateToken(user) {
   const payload = {
     id: user.id,
     role: user.role,
@@ -10,7 +10,7 @@ async function generateToken(user) {
   });
 }
 
-async function generateRefreshToken(user) {
+function generateRefreshToken(user) {
   const payload = { id: user.id };
   return jwt.sign(payload, process.env.REFRESH_TOKEN, {
     expiresIn: "7d",

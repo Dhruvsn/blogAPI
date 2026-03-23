@@ -1,7 +1,7 @@
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const { saveUser, findUser, findUserById } = require("../models/userModel.js");
-const { validateEmail } = require("../utils/validateors.js");
+const { validateEmail } = require("../utils/validators.js");
 const { saveRefreshToken } = require("../models/tokenModel.js");
 const {
   generateToken,
@@ -141,9 +141,9 @@ const refreshToken = async (req, res) => {
 
   try {
     const decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN);
-    const user = findUserById(decoded.id);
+    const user = await findUserById(decoded.id);
 
-    if (!user || user.refreshToken !== refreshToken) {
+    if (!user || user.refresh_token !== refreshToken) {
       return res.status(403).json({
         message: "Invalid refresh token!",
       });
@@ -172,7 +172,7 @@ const logoutUser = async (req, res) => {
 
   try {
     const id = userId;
-    await saveRefreshToken(null, id);
+    await saveRefreshToken(null, { id });
     res.status(200).json({
       message: "Logout successful!",
     });
